@@ -1,0 +1,138 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>MySpot Beta</title><link rel="manifest" href="/manifest.webmanifest"><meta name="theme-color" content="#2445b8">
+<style>
+*{box-sizing:border-box}body{margin:0;background:#15102a;color:#fff;font:17px/1.55 system-ui}#ghost{position:fixed;inset:0;display:grid;place-items:center;pointer-events:none;font:bold clamp(90px,29vw,440px)/1 Georgia;color:#ecb7ff;background:center/contain no-repeat;opacity:.18}main{position:relative;max-width:820px;margin:auto;padding:24px}header,nav,.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}header{justify-content:space-between;border-bottom:1px solid #ffffff44;padding-bottom:14px}strong{font-size:24px;letter-spacing:-1px}small{color:#d4c9df}button,select,textarea,input{font:inherit}button,select{border:1px solid #ffffff55;border-radius:24px;background:#281e39;color:white;padding:7px 16px;cursor:pointer}button[aria-pressed=true]{background:#d4ff96;color:#17240b}h1{font:clamp(44px,9vw,85px)/1 Georgia;margin:32px 0 20px}article,details{background:#140e22bd;border:1px solid #ffffff40;border-radius:18px;padding:20px;margin:16px 0}label{display:block;margin:12px 0}input{max-width:100%}textarea{width:100%;background:#160f24;color:#fff;border:1px solid #82748f;border-radius:10px;padding:10px}img,video,audio{max-width:100%;max-height:55vh}#profile{background-position:center;background-size:cover}#profile span{background:#21152c;padding:4px 10px;border-radius:10px}p{white-space:pre-wrap;overflow-wrap:anywhere}
+nav{position:sticky;top:0;background:#15102af5;z-index:1;padding:10px 0;gap:6px}nav button{font-size:.88rem}input:not([type=file],[type=color],[type=range],[type=checkbox]){background:#211a34;color:white;padding:8px;border:1px solid #82748f;border-radius:8px}summary{cursor:pointer}h2{line-height:1.18}body.large{font-size:21px}body.solid article{background:#140e22}
+body{background:#354477}main{max-width:960px}header{background:#2445b8;padding:14px 20px;border-radius:12px;color:white}header strong{font:800 32px system-ui}header small{color:white}h1{font:700 clamp(28px,5vw,46px)/1.2 system-ui;margin:20px 0}nav{background:#202d58;border-radius:12px;padding:9px}article,details{background:#1d284be8;border-radius:12px}#account form{display:flex;gap:8px;align-items:center;flex-wrap:wrap}#account input{width:145px}#account{margin-top:12px}#account p{margin:4px 0}#profile{min-height:155px;background-color:#2b2858}#examples{display:none}
+</style><div id="ghost">M</div><main><header><strong>◈ MySpot</strong><small>Community beta</small></header><section id="account"></section><h1 id="title">Community feed</h1><nav><button id="home" aria-pressed="true">Feed</button><button id="visit" aria-pressed="false">My profile</button><button data-tab="pages">Pages</button><button data-tab="groups">Groups</button><button data-tab="market">Marketplace</button><button data-tab="settings">Settings</button></nav><section id="directory" hidden></section><section id="original">
+<details><summary>Customize your space</summary><label>Your display name <input id="displayName" maxlength="40" placeholder="Enter your name"></label><label>Canvas color <input id="color" type="color" value="#15102a"></label><label>Ghost picture or logo <input id="logo" type="file" accept="image/*"></label><label>Ghost opacity <input id="fade" type="range" min="0" max="100" value="18"></label><label>Profile background or animated GIF <input id="wall" type="file" accept="image/*"></label><label>Profile song <input id="song" type="file" accept="audio/*"></label></details>
+<article id="profile" hidden><h2><span id="profileName">My spot</span></h2><audio id="player" controls hidden></audio></article>
+<article><form id="composer"><label for="caption">Share with beta members</label><textarea id="caption" placeholder="What’s happening?" rows="2"></textarea><label>Photo or video <input id="media" type="file" accept="image/*,video/*"></label><button>Publish to beta</button></form></article><section id="posts"></section><section id="examples"><article><small>Jules · Gulf Coast creators</small><h2>Friday night photo walk</h2><p>Meet us by the pier just before sunset. Bring whatever camera you have.</p></article><article><small>Rae · Music room</small><h2>First take from the garage</h2><p>Trying a slower intro tonight. Who else is recording?</p></article></section></section></main>
+<script>
+const byId=id=>document.getElementById(id);
+const ghost=byId('ghost'),profile=byId('profile'),player=byId('player');
+function fileChange(id,apply){byId(id).onchange=e=>{const file=e.target.files[0];if(file)apply(URL.createObjectURL(file))}}
+function currentName(){return byId('displayName').value.trim()||'You'}
+byId('displayName').oninput=()=>{
+ const name=currentName();
+ byId('profileName').textContent=name==='You'?'My spot':name+'’s spot';
+ if(!ghost.style.backgroundImage)ghost.textContent=name==='You'?'M':name.split(/\s+/).slice(0,2).map(word=>Array.from(word)[0]).join('').toUpperCase();
+ document.querySelectorAll('.own-author').forEach(author=>author.textContent=name+' · Just now');
+};
+fileChange('logo',url=>{ghost.textContent='';ghost.style.backgroundImage='url('+url+')'});
+fileChange('wall',url=>profile.style.backgroundImage='url('+url+')');
+fileChange('song',url=>{player.src=url;player.hidden=false});
+byId('fade').oninput=e=>ghost.style.opacity=e.target.value/100;
+byId('color').oninput=e=>document.body.style.backgroundColor=e.target.value;
+function navigate(visiting){profile.hidden=!visiting;ghost.hidden=visiting;ghost.style.display=visiting?'none':'grid';byId('examples').hidden=visiting;byId('title').textContent=visiting?'Your profile.':'Community feed';byId('visit').setAttribute('aria-pressed',visiting);byId('home').setAttribute('aria-pressed',!visiting);if(!visiting)player.pause()}
+byId('visit').onclick=()=>navigate(true);byId('home').onclick=()=>navigate(false);
+byId('composer').onsubmit=e=>{e.preventDefault();const file=byId('media').files[0],caption=byId('caption').value.trim();if(!file&&!caption)return;const card=document.createElement('article'),author=document.createElement('small'),body=document.createElement('p');author.className='own-author';author.textContent=currentName()+' · Just now';body.textContent=caption;card.append(author,body);if(file){const video=file.type.startsWith('video/'),item=document.createElement(video?'video':'img');item.src=URL.createObjectURL(file);if(video)item.controls=true;else item.alt=caption||'Uploaded photo';card.append(item)}byId('posts').prepend(card);e.target.reset()};
+
+const directory=byId('directory');
+const labels={pages:'Pages',groups:'Groups',market:'Marketplace',settings:'Settings'};
+const entries={
+ pages:[{name:'Gulf Coast Sessions',description:'Local artists and backyard recordings.'}],
+ groups:[{name:'Weekend Makers',description:'Share a project or ask another maker for advice.'}],
+ market:[{name:'Acoustic guitar',price:'85',description:'Used steel-string guitar with a soft case.'}]
+};
+const prefs={large:false,solid:false};
+function element(tag,text,parent){
+ const node=document.createElement(tag);node.textContent=text;parent.append(node);return node;
+}
+function action(text,parent,fn){
+ const button=element('button',text,parent);button.type='button';button.onclick=fn;return button;
+}
+function field(label,parent){
+ const wrapper=element('label',label+' ',parent);
+ const input=element('input','',wrapper);input.required=true;input.maxLength=160;return input;
+}
+function renderDirectory(tab){
+ directory.replaceChildren();
+ if(tab==='settings'){
+  element('h2','Reading preferences',directory);
+  for(const [key,label] of Object.entries({large:'Larger text',solid:'Solid post backgrounds'})){
+   const row=element('label','',directory),check=element('input','',row);
+   check.type='checkbox';check.checked=prefs[key];row.append(' '+label);
+   check.onchange=()=>{prefs[key]=check.checked;document.body.classList.toggle(key,check.checked)};
+  }
+  action('Edit profile appearance',directory,()=>{location.hash='profile';document.querySelector('details').open=true});
+  return;
+ }
+ const title={pages:'Create a page',groups:'Create a group',market:'List an item'}[tab];
+ const editor=element('details','',directory);element('summary',title,editor);
+ const form=element('form','',editor),name=field('Name',form),description=field('Description',form);
+ const price=tab==='market'?field('Price in dollars',form):null;
+ if(price){price.type='number';price.min='0';price.step='.01'}
+ element('button',title,form);
+ form.onsubmit=e=>{e.preventDefault();if(!name.value.trim()||!description.value.trim())return;
+ entries[tab].unshift({name:name.value.trim(),description:description.value.trim(),price:price?.value,own:true});renderDirectory(tab)};
+ const search=field('Search '+labels[tab],directory);search.required=false;search.type='search';
+ const results=element('section','',directory);
+ function list(){
+  results.replaceChildren();
+  for(const item of entries[tab].filter(x=>x.name.toLowerCase().includes(search.value.trim().toLowerCase()))){
+   const card=element('article','',results);
+   element('small',item.own?'Created by you':'Community preview',card);
+   element('h2',item.name,card);element('p',item.description,card);
+   if(tab==='market')element('strong',new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format(item.price)+' ',card);
+   const states={pages:['Follow page','Following'],groups:['Join group','Joined'],market:['Save listing','Saved']};
+   const toggle=action(states[tab][+!!item.active],card,()=>{item.active=!item.active;list()});toggle.setAttribute('aria-pressed',!!item.active);
+   if(tab==='groups'&&(item.active||item.own)){
+    const thread=element('form','',card),message=field('Group discussion',thread);element('button','Post',thread);
+    thread.onsubmit=e=>{e.preventDefault();if(message.value.trim()){(item.messages??=[]).unshift(message.value.trim());list()}};
+    for(const post of item.messages||[])element('p',post,card);
+   }
+  }
+  if(!results.children.length)element('p','No matches. Try a different name.',results);
+ }
+ search.oninput=list;list();
+}
+function route(){
+ const requested=location.hash.slice(1);
+ const tab=Object.hasOwn(labels,requested)||requested==='profile'?requested:'home';
+ const extra=Object.hasOwn(labels,tab);
+ navigate(tab==='profile');byId('original').hidden=extra;directory.hidden=!extra;
+ byId('home').setAttribute('aria-pressed',tab==='home');
+ document.querySelectorAll('[data-tab]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.tab===tab));
+ if(extra){byId('title').textContent=labels[tab];renderDirectory(tab)}
+ window.scrollTo(0,0);
+}
+byId('home').onclick=()=>location.hash='home';byId('visit').onclick=()=>location.hash='profile';
+document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>location.hash=b.dataset.tab);
+window.addEventListener('hashchange',route);route();
+const account=byId('account');
+let signedIn=null;
+async function api(path,data){
+ const response=await fetch('/api/'+path,data?{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)}:{});
+ const result=await response.json();if(!response.ok)throw Error(result.error||'Request failed');return result;
+}
+async function reloadFeed(){
+ if(!signedIn)return;
+ const rows=await api('feed');byId('posts').replaceChildren();
+ for(const row of rows){
+ if(location.hash==='#profile'&&row.name!==signedIn)continue;
+ const card=element('article','',byId('posts'));element('strong','@'+row.name,card);element('p',row.body,card);
+ if(row.attached){const url='/media/'+row.id;
+ const image=element('img','',card);image.alt='Post attachment';image.onerror=()=>{image.remove();const video=element('video','',card);video.controls=true;video.src=url};image.src=url}
+ }
+}
+async function showAccount(){
+ account.replaceChildren();
+ byId('composer').parentElement.hidden=!signedIn;
+ if(signedIn){
+ element('small','Signed in as @'+signedIn+'  ',account);
+ action('Refresh feed',account,()=>reloadFeed().catch(e=>alert(e.message)));
+ action('Sign out',account,async()=>{try{await api('logout',{});location.reload()}catch(e){alert(e.message)}});await reloadFeed();return;
+ }
+ const form=element('form','',account),name=field('Handle',form),pass=field('Password',form);pass.type='password';pass.autocomplete='current-password';
+ const login=element('button','Sign in',form),register=element('button','Create account',form);
+ form.onsubmit=async e=>{e.preventDefault();try{const r=await api(e.submitter===register?'register':'login',{name:name.value,password:pass.value});signedIn=r.name;await showAccount()}catch(err){alert(err.message)}};
+}
+byId('composer').onsubmit=async e=>{e.preventDefault();const submit=e.target.querySelector('button');submit.disabled=true;
+ try{const file=byId('media').files[0];if(file&&file.size>4000000)throw Error('Choose a file under 4 MB.');
+ let media='';if(file)media=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=reject;reader.readAsDataURL(file)});
+ await api('post',{body:byId('caption').value.trim(),media});e.target.reset();await reloadFeed()}catch(err){alert(err.message)}finally{submit.disabled=false}};
+window.addEventListener('hashchange',()=>reloadFeed().catch(e=>alert(e.message)));
+byId('composer').parentElement.hidden=true;
+api('me').then(r=>{signedIn=r.name;return showAccount()}).catch(()=>account.textContent='Connect to the MySpot server to sign in.');
+if('serviceWorker' in navigator)navigator.serviceWorker.register('/sw.js').catch(()=>{});
+</script></html>
