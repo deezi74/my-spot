@@ -1,0 +1,20 @@
+name: MySpot Android beta
+on:
+  workflow_dispatch:
+  push:
+    paths: ['.github/workflows/android-beta.yml', 'android/**']
+permissions:
+  contents: write
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Android package
+        run: bash android/build.sh
+      - name: Publish beta APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="android-beta-${GITHUB_RUN_NUMBER}"
+          gh release create "$tag" out/MySpot.apk --target "$GITHUB_SHA" --prerelease --title "MySpot Android beta ${GITHUB_RUN_NUMBER}" --notes "Browser-based MySpot launcher. This beta uses a per-build signing key."
